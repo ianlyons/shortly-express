@@ -8,6 +8,7 @@ var User = require('./app/models/user');
 var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
+var bcrypt = require('bcrypt-nodejs');
 
 var app = express();
 
@@ -15,7 +16,9 @@ app.configure(function() {
   app.set('views', __dirname + '/views');
   app.set('view engine', 'ejs');
   app.use(partials());
-  app.use(express.bodyParser())
+  app.use(express.bodyParser());
+  app.use(express.cookieParser('oatmealraisin'));
+  app.use(express.cookieSession());
   app.use(express.static(__dirname + '/public'));
 });
 
@@ -79,21 +82,36 @@ app.post('/links', function(req, res) {
 /************************************************************/
 app.post('/signup', function(req, res){
   console.log(req.body);
-  console.log('hitting the signup post');
-  new User(req.body).fetch().then(function(found){
-    if (found){
-      res.send(200, 'Bro you already exist, seriously, seriously, stop');
-    } else {
-      var user = new User(req.body);
-
-      user.save().then(function(newUser){
-        console.log(newUser);
-        Users.add(newUser);
-        res.send(201, newUser);
-      });
-    }
+  var username = req.body.username;
+  new User(req.body).fetch().then(function(){
+    db.knex('users').where("username", "=", username).then(function(data) {
+      if (data.length){
+        console.log("Bro. Bro bro bro.");
+        res.send(200, 'Bro you already exist, seriously, seriously, stop');
+      } else {
+        var user = new User(req.body);
+        user.save().then(function(newUser){
+          Users.add(newUser);
+          console.log(newUser);
+          // add successful auth cookie to the response
+          res.cookie('username', newUser.attributes.username, { maxAge: 900000, httpOnly: true});
+          res.send(201, newUser);
+        });
+      }
+    });
   });
+});
 
+app.post('/login', function(req, res){
+  var username = req.body.username;
+  var password = req.body.password;
+  var hashPass = bcrypt.hashSync(password);
+  db.knex('users').where('username', '=', username)
+    .where('password', '=', hashPass).
+    then(function(data){
+      console.log('hash: '+hashPass);
+      console.log('data: '+data);
+    });
 });
 
 
@@ -124,6 +142,7 @@ app.get('/*', function(req, res) {
     }
   });
 });
+
 
 console.log('Shortly is listening on 4568');
 app.listen(4568);

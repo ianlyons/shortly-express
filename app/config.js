@@ -58,5 +58,4 @@ db.knex.schema.hasTable('clicks').then(function(exists) {
 // Add additional schema definitions below
 /************************************************************/
 
-
 module.exports = db;
