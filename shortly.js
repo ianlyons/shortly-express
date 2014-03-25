@@ -18,7 +18,7 @@ app.configure(function() {
   app.use(partials());
   app.use(express.bodyParser());
   app.use(express.cookieParser('oatmealraisin'));
-  app.use(express.cookieSession());
+  app.use(express.session());
   app.use(express.static(__dirname + '/public'));
 });
 
@@ -81,21 +81,27 @@ app.post('/links', function(req, res) {
 // Write your authentication routes here
 /************************************************************/
 app.post('/signup', function(req, res){
-  console.log(req.body);
-  var username = req.body.username;
-  new User(req.body).fetch().then(function(){
-    db.knex('users').where("username", "=", username).then(function(data) {
+  console.log('processing post request to signup');
+  var usrObj = {
+    username: req.body.username,
+    password: req.body.password
+  };
+  new User(usrObj).fetch().then(function(){
+    db.knex('users').where("username","=", usrObj.username).then(function(data) {
       if (data.length){
-        console.log("Bro. Bro bro bro.");
+        //TODO: Inform end user that username already exists
         res.send(200, 'Bro you already exist, seriously, seriously, stop');
       } else {
-        var user = new User(req.body);
+        var user = new User(usrObj);
         user.save().then(function(newUser){
           Users.add(newUser);
           console.log(newUser);
           // add successful auth cookie to the response
-          res.cookie('username', newUser.attributes.username, { maxAge: 900000, httpOnly: true});
-          res.send(201, newUser);
+          req.session.regenerate(function(err) {
+          console.log("Generating session cookie...");
+            req.session.username = username;
+            res.redirect('/');
+          });
         });
       }
     });
@@ -103,14 +109,24 @@ app.post('/signup', function(req, res){
 });
 
 app.post('/login', function(req, res){
+  console.log('processing post request to login');
   var username = req.body.username;
   var password = req.body.password;
   var hashPass = bcrypt.hashSync(password);
   db.knex('users').where('username', '=', username)
-    .where('password', '=', hashPass).
-    then(function(data){
-      console.log('hash: '+hashPass);
-      console.log('data: '+data);
+    .then(function(data){
+      console.log('returned user data from query: ');
+      console.log(data);
+      if(bcrypt.compareSync(password, data[0].password)) {
+        console.log("Same password! generate session and redirect to index");
+        req.session.regenerate(function(err) {
+          console.log("Generating session cookie...");
+          req.session.username = username;
+          res.redirect('/');
+        });
+      } else {
+        res.redirect('/login');
+      }
     });
 });
 
