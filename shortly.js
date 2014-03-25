@@ -22,21 +22,22 @@ app.configure(function() {
   app.use(express.static(__dirname + '/public'));
 });
 
-app.get('/', function(req, res) {
+app.get('/', util.checkAuth, function(req, res) {
   res.render('index');
 });
 
-app.get('/create', function(req, res) {
+app.get('/create', util.checkAuth, function(req, res) {
   res.render('index');
 });
 
-app.get('/links', function(req, res) {
+app.get('/links', util.checkAuth, function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
 app.get('/login', function(req, res) {
+  console.log('hitting login when logged out');
   res.render('index');
 });
 
@@ -115,17 +116,18 @@ app.post('/login', function(req, res){
   var hashPass = bcrypt.hashSync(password);
   db.knex('users').where('username', '=', username)
     .then(function(data){
-      console.log('returned user data from query: ');
-      console.log(data);
+
+      console.log('Returned user data from query.');
       if(bcrypt.compareSync(password, data[0].password)) {
-        console.log("Same password! generate session and redirect to index");
+        // change bcrypt to Async
+        console.log("Same password! Generate session and redirect to index");
         req.session.regenerate(function(err) {
           console.log("Generating session cookie...");
           req.session.username = username;
-          res.redirect('/');
         });
+        // res.render('index');
       } else {
-        res.redirect('/login');
+        // res.redirect('/login');
       }
     });
 });
