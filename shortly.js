@@ -30,7 +30,15 @@ app.get('/create', function(req, res) {
 app.get('/links', function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
-  })
+  });
+});
+
+app.get('/login', function(req, res) {
+  res.render('index');
+});
+
+app.get('/signup', function(req, res) {
+  res.render('index');
 });
 
 app.post('/links', function(req, res) {
@@ -69,7 +77,24 @@ app.post('/links', function(req, res) {
 /************************************************************/
 // Write your authentication routes here
 /************************************************************/
+app.post('/signup', function(req, res){
+  console.log(req.body);
+  console.log('hitting the signup post');
+  new User(req.body).fetch().then(function(found){
+    if (found){
+      res.send(200, 'Bro you already exist, seriously, seriously, stop');
+    } else {
+      var user = new User(req.body);
 
+      user.save().then(function(newUser){
+        console.log(newUser);
+        Users.add(newUser);
+        res.send(201, newUser);
+      });
+    }
+  });
+
+});
 
 
 /************************************************************/
