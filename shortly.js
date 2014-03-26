@@ -28,6 +28,14 @@ app.configure(function() {
   app.use(express.static(__dirname + '/public'));
 });
 
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(user, done) {
+  done(null, user);
+});
+
 passport.use(new GitHubStrategy({
     clientID: '6c8a2e3f445bd40c848f',
     clientSecret: 'c36a777c13ca13ffcac039174df41cfcb3c4940b',
@@ -53,11 +61,14 @@ app.get('/login/github', passport.authenticate('github'));
 app.get('/login/github/callback',
   passport.authenticate('github', {failureRedirect: '/login'}),
   function(req, res){
-    console.log('hitting the get callback');
+    console.log(arguments);
+    res.session.regenerate(function(err) {
+      req.session.username = 'githubGuest';
+    });
     res.redirect('/');
   });
 
-app.get('/', util.checkAuth, function(req, res) {
+app.get('/',  function(req, res) {
   res.render('index');
 });
 
