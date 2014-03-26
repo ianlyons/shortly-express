@@ -1,3 +1,5 @@
+/* global require */
+
 var express = require('express');
 var util = require('./lib/utility');
 var partials = require('express-partials');
@@ -9,6 +11,8 @@ var Links = require('./app/collections/links');
 var Link = require('./app/models/link');
 var Click = require('./app/models/click');
 var bcrypt = require('bcrypt-nodejs');
+var passport = require('passport');
+var GitHubStrategy = require('passport-github').Strategy;
 
 var app = express();
 
@@ -19,8 +23,39 @@ app.configure(function() {
   app.use(express.bodyParser());
   app.use(express.cookieParser('oatmealraisin'));
   app.use(express.session());
+  app.use(passport.initialize());
+  app.use(passport.session());
   app.use(express.static(__dirname + '/public'));
 });
+
+passport.use(new GitHubStrategy({
+    clientID: '6c8a2e3f445bd40c848f',
+    clientSecret: 'c36a777c13ca13ffcac039174df41cfcb3c4940b',
+    callbackURL: "http://127.0.0.1:4568/login/github/callback"
+  },
+  function(accessToken, refreshToken, profile, done) {
+    // console.log('accessToken: '+ accessToken);
+    // console.log('refreshToken: '+refreshToken);
+    console.log('profile: '+profile.id);
+    // console.log('done: '+done);
+    var profileId = profile.id;
+    var githubUser = { githubId: profileId };
+    var user = new User();
+    user.findOrCreate(githubUser, function (err, user) {
+      console.log('hitting the passport.use callback with user object: '+user);
+      return done(err, user);
+    });
+  }
+));
+
+app.get('/login/github', passport.authenticate('github'));
+
+app.get('/login/github/callback',
+  passport.authenticate('github', {failureRedirect: '/login'}),
+  function(req, res){
+    console.log('hitting the get callback');
+    res.redirect('/');
+  });
 
 app.get('/', util.checkAuth, function(req, res) {
   res.render('index');
@@ -30,19 +65,24 @@ app.get('/create', util.checkAuth, function(req, res) {
   res.render('index');
 });
 
-app.get('/links', util.checkAuth, function(req, res) {
+app.get('/links', function(req, res) {
   Links.reset().fetch().then(function(links) {
     res.send(200, links.models);
   });
 });
 
 app.get('/login', function(req, res) {
-  console.log('hitting login when logged out');
-  res.render('index');
+  res.render('login');
+});
+
+app.get('/logout', function(req, res) {
+  req.session.destroy(function() {
+    res.redirect('/login');
+  });
 });
 
 app.get('/signup', function(req, res) {
-  res.render('index');
+  res.render('signup');
 });
 
 app.post('/links', function(req, res) {
@@ -124,13 +164,15 @@ app.post('/login', function(req, res){
         req.session.regenerate(function(err) {
           console.log("Generating session cookie...");
           req.session.username = username;
+          res.redirect('/');
         });
-        // res.render('index');
       } else {
-        // res.redirect('/login');
+        res.redirect('/login');
       }
     });
 });
+
+
 
 
 /************************************************************/

@@ -4,8 +4,6 @@ window.Shortly = Backbone.View.extend({
   events: {
     'click li a.index':  'renderIndexView',
     'click li a.create': 'renderCreateView',
-    'click li a.login': 'renderLoginView',
-    'click li a.signup': 'renderSignupView'
   },
 
   initialize: function(){
